@@ -245,6 +245,30 @@ header h1 {
     color: var(--text-secondary);
 }
 
+/* Source links styling */
+.sources-content a {
+    color: #93c5fd;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    padding: 0 2px;
+}
+
+.sources-content a:hover {
+    color: #bfdbfe;
+    text-decoration-style: solid;
+    text-decoration-thickness: 2px;
+    background: rgba(59, 130, 246, 0.15);
+    border-radius: 3px;
+}
+
+.sources-content a:visited {
+    color: #a5b4fc;
+}
+
 /* Markdown formatting styles */
 .message-content h1,
 .message-content h2,
@@ -632,6 +656,40 @@ details[open] .suggested-header::before {
     border-color: var(--primary-color);
     color: var(--primary-color);
     transform: translateX(2px);
+}
+
+/* New Chat Button */
+.new-chat-button {
+    width: 100%;
+    padding: 0.5rem 0;
+    background: none;
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.new-chat-button:hover {
+    color: var(--primary-color);
+}
+
+.new-chat-button:active {
+    color: var(--primary-color);
+}
+
+.new-chat-button:focus {
+    outline: none;
+    color: var(--primary-color);
 }
 
 /* Responsive Design */
