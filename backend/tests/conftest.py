@@ -14,6 +14,12 @@ from ai_generator import AIGenerator
 from rag_system import RAGSystem
 from config import Config
 
+# API testing imports
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from pydantic import BaseModel
+from typing import List, Optional
+
 
 @pytest.fixture
 def mock_chroma_client():
@@ -140,3 +146,168 @@ def sample_course_outline():
             {"lesson_number": 2, "lesson_title": "Tool Schemas", "lesson_link": "https://example.com/lesson2"}
         ]
     }
+
+
+# ============================================================================
+# API Testing Fixtures
+# ============================================================================
+
+# Pydantic models for API tests (mirrors app.py models)
+class QueryRequest(BaseModel):
+    """Request model for course queries"""
+    query: str
+    session_id: Optional[str] = None
+
+
+class QueryResponse(BaseModel):
+    """Response model for course queries"""
+    answer: str
+    sources: List[str]
+    session_id: str
+
+
+class CourseStats(BaseModel):
+    """Response model for course statistics"""
+    total_courses: int
+    course_titles: List[str]
+
+
+@pytest.fixture
+def mock_rag_system():
+    """Mock RAGSystem for API testing"""
+    mock_system = Mock(spec=RAGSystem)
+
+    # Mock session manager
+    mock_session_manager = Mock()
+    mock_session_manager.create_session = Mock(return_value="test-session-123")
+    mock_system.session_manager = mock_session_manager
+
+    # Mock query method
+    mock_system.query = Mock(return_value=("Test answer from RAG system", ["Source 1", "Source 2"]))
+
+    # Mock get_course_analytics
+    mock_system.get_course_analytics = Mock(return_value={
+        "total_courses": 3,
+        "course_titles": ["Course A", "Course B", "Course C"]
+    })
+
+    return mock_system
+
+
+@pytest.fixture
+def test_app(mock_rag_system):
+    """
+    Create a test FastAPI app without static file mounting.
+
+    This fixture creates a minimal app that mirrors the API endpoints
+    from app.py but avoids the static files mount that causes issues
+    in test environments where the frontend directory doesn't exist.
+    """
+    app = FastAPI(title="Course Materials RAG System - Test")
+
+    # Store mock RAG system in app state
+    app.state.rag_system = mock_rag_system
+
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        """Process a query and return response with sources"""
+        try:
+            rag_system = app.state.rag_system
+
+            # Create session if not provided
+            session_id = request.session_id
+            if not session_id:
+                session_id = rag_system.session_manager.create_session()
+
+            # Process query using RAG system
+            answer, sources = rag_system.query(request.query, session_id)
+
+            return QueryResponse(
+                answer=answer,
+                sources=sources,
+                session_id=session_id
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        """Get course analytics and statistics"""
+        try:
+            rag_system = app.state.rag_system
+            analytics = rag_system.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"]
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/")
+    async def root():
+        """Root endpoint for health check"""
+        return {"status": "ok", "message": "RAG System API"}
+
+    return app
+
+
+@pytest.fixture
+def test_client(test_app):
+    """Create a test client for API testing"""
+    return TestClient(test_app)
+
+
+@pytest.fixture
+def mock_rag_system_error():
+    """Mock RAGSystem that raises exceptions for error testing"""
+    mock_system = Mock(spec=RAGSystem)
+
+    # Mock session manager
+    mock_session_manager = Mock()
+    mock_session_manager.create_session = Mock(return_value="error-session")
+    mock_system.session_manager = mock_session_manager
+
+    # Mock query to raise an exception
+    mock_system.query = Mock(side_effect=Exception("Database connection failed"))
+
+    # Mock get_course_analytics to raise an exception
+    mock_system.get_course_analytics = Mock(side_effect=Exception("Analytics service unavailable"))
+
+    return mock_system
+
+
+@pytest.fixture
+def test_app_with_errors(mock_rag_system_error):
+    """Create a test app configured to simulate errors"""
+    app = FastAPI(title="Course Materials RAG System - Error Test")
+    app.state.rag_system = mock_rag_system_error
+
+    @app.post("/api/query", response_model=QueryResponse)
+    async def query_documents(request: QueryRequest):
+        try:
+            rag_system = app.state.rag_system
+            session_id = request.session_id or rag_system.session_manager.create_session()
+            answer, sources = rag_system.query(request.query, session_id)
+            return QueryResponse(answer=answer, sources=sources, session_id=session_id)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/courses", response_model=CourseStats)
+    async def get_course_stats():
+        try:
+            rag_system = app.state.rag_system
+            analytics = rag_system.get_course_analytics()
+            return CourseStats(
+                total_courses=analytics["total_courses"],
+                course_titles=analytics["course_titles"]
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    return app
+
+
+@pytest.fixture
+def test_client_with_errors(test_app_with_errors):
+    """Create a test client for error scenario testing"""
+    return TestClient(test_app_with_errors)
