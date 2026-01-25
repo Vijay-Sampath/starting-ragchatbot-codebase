@@ -29,3 +29,7 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js (frontend)
+frontend/node_modules/
+frontend/package-lock.json
