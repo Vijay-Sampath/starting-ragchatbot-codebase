@@ -50,9 +50,10 @@ body {
     padding: 0;
 }
 
-/* Header - Hidden */
+/* Header */
 header {
-    display: none;
+    text-align: center;
+    padding: 1.5rem 0;
 }
 
 header h1 {
