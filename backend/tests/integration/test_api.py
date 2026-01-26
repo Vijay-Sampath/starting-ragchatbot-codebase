@@ -320,3 +320,62 @@ class TestAPIEdgeCases:
         while not results.empty():
             session_id, status_code = results.get()
             assert status_code == 200
+
+
+class TestFrontendUI:
+    """Test cases for frontend UI elements (reads HTML file directly)"""
+
+    @pytest.fixture
+    def html_content(self):
+        """Read the index.html file directly from the frontend directory"""
+        import os
+        # Navigate from backend/tests/integration to frontend
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        html_path = os.path.join(base_dir, "frontend", "index.html")
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    @pytest.mark.frontend
+    def test_index_html_exists(self, html_content):
+        """Test that index.html exists and is readable"""
+        assert html_content is not None
+        assert len(html_content) > 0
+        assert "<!doctype html>" in html_content.lower() or "<!DOCTYPE html>" in html_content
+
+    @pytest.mark.frontend
+    def test_header_displays_course_compass(self, html_content):
+        """Test that the header shows 'Course Compass' title"""
+        assert "<h1>Course Compass</h1>" in html_content
+
+    @pytest.mark.frontend
+    def test_subheader_displays_tagline(self, html_content):
+        """Test that the subheader shows the AI-powered tagline"""
+        assert "Your AI-powered learning companion" in html_content
+        assert 'class="subtitle"' in html_content
+
+    @pytest.mark.frontend
+    def test_page_title_is_course_compass(self, html_content):
+        """Test that the page title is set to Course Compass"""
+        assert "<title>Course Compass</title>" in html_content
+
+    @pytest.mark.frontend
+    def test_theme_toggle_button_exists(self, html_content):
+        """Test that the theme toggle button is present"""
+        assert 'id="themeToggle"' in html_content
+        assert 'class="theme-toggle"' in html_content
+
+    @pytest.mark.frontend
+    def test_new_chat_button_exists(self, html_content):
+        """Test that the new chat button is present"""
+        assert 'id="newChatButton"' in html_content
+        assert "+ NEW CHAT" in html_content
+
+    @pytest.mark.frontend
+    def test_css_version_is_current(self, html_content):
+        """Test that CSS has cache-busting version parameter"""
+        assert "style.css?v=" in html_content
+
+    @pytest.mark.frontend
+    def test_js_version_is_current(self, html_content):
+        """Test that JS has cache-busting version parameter"""
+        assert "script.js?v=" in html_content
